@@ -1,24 +1,20 @@
 import struct
 import sys
+import os
 
 FILE_HEADER = 8
 vertex_offset =[]
 UV_offset=[]
 texture_offset=[]
 texture_count=[]
+all_offset=[]
 
 # Indonesia
 # POFO adalah jarak antar offset yang diencrpyt dengan format dibawah ini.
 # Pembuatan POF0 disesuaikan dengan offset mana dulu yang muncul (ascending)
-# Ini contoh jika urutannya adalah header utama, header mesh, mesh, tekstur, dan uv
-# ini bisa digunakan bila urutannya sama seperti yobj The Rock, Chavo Guerrero, dll
-# butuh revisi jika urutannya berbeda seperti yobj Batista
 # English:
 # POFO is the distance between offsets which is encrypted in the format below.
 # POF0 generated is adjusted to which offset appears first (ascending)
-# This is an example if the order is main header, mesh header, mesh, texture, and uv
-# this can be used if the order is the same as yobj The Rock, Chavo Guerrero, etc
-# needs revision if the order is different like yobj Batista
 
 def out(p, cursor, diff):   #pofo encrpyt logic
     count = 0
@@ -84,7 +80,8 @@ def generate_pof0(f, p):
 
     f.read(8)
     cursor = f.tell()
-    out(p, cursor, FILE_HEADER)
+    all_offset.append(FILE_HEADER)
+    all_offset.append(f.tell())
     mesh_offset = struct.unpack('<I', f.read(4))[0]
     print(f"Read Offset {f.tell()-4}, Mesh Offset: {mesh_offset}")
 
@@ -98,19 +95,22 @@ def generate_pof0(f, p):
     f.read(4)
     temp = cursor
     cursor = f.tell()
-    out(p, cursor, temp)
+    all_offset.append(f.tell())
+
     bone_offset = struct.unpack('<I', f.read(4))[0]
     print(f"Read Offset {f.tell()-4}, Bone Offset: {bone_offset}")
 
     temp = cursor
     cursor = f.tell()
-    out(p, cursor, temp)
+    all_offset.append(f.tell())
+
     texname_offset = struct.unpack('<I', f.read(4))[0]
     print(f"Read Offset {f.tell()-4}, Texture Name Offset: {texname_offset}")
 
     temp = cursor
     cursor = f.tell()
-    out(p, cursor, temp)
+    all_offset.append(f.tell())
+
     obj_groupname_offset = struct.unpack('<I', f.read(4))[0]
     print(f"Read Offset {f.tell()-4}, Object Groupname Offset: {obj_groupname_offset}")
 
@@ -129,14 +129,16 @@ def generate_pof0(f, p):
 
         temp = cursor
         cursor = f.tell()
-        out(p, cursor, temp)
+        all_offset.append(f.tell())
+
         temp1 = struct.unpack('<I', f.read(4))[0]
         vertex_offset.append(temp1)
         print(f"Read Offset {f.tell()-4}, Vertex Offset: {temp1}")
 
         temp = cursor
         cursor = f.tell()
-        out(p, cursor, temp)
+        all_offset.append(f.tell())
+
         temp1 = struct.unpack('<I', f.read(4))[0]
         texture_offset.append(temp1)
         print(f"Read Offset {f.tell()-4}, Texture Offset: {temp1}")
@@ -144,7 +146,8 @@ def generate_pof0(f, p):
         f.read(8)
         temp = cursor
         cursor = f.tell()
-        out(p, cursor, temp)
+        all_offset.append(f.tell())
+
         temp1 = struct.unpack('<I', f.read(4))[0]
         UV_offset.append(temp1)
         print(f"Read Offset {f.tell()-4}, UV Offset: {temp1}")
@@ -156,14 +159,16 @@ def generate_pof0(f, p):
         f.seek(vertex_offset[i]+16)
         temp = cursor
         cursor = f.tell()
-        out(p, cursor, temp)
+        all_offset.append(f.tell())
+
         temp1 = struct.unpack('<I', f.read(4))[0]
         print(f"Read Offset {f.tell()-4}, Vertex Offset 2: {temp1}")
 
         f.seek(UV_offset[i]+8)
         temp = cursor
         cursor = f.tell()
-        out(p, cursor, temp)
+        all_offset.append(f.tell())
+
         temp1 = struct.unpack('<I', f.read(4))[0]
         print(f"Read Offset {f.tell()-4}, UV Offset 2: {temp1}")
 
@@ -179,14 +184,16 @@ def generate_pof0(f, p):
 
             temp = cursor
             cursor = f.tell()
-            out(p, cursor, temp)
+            all_offset.append(f.tell())
+
             temp1 = struct.unpack('<I', f.read(4))[0]
             mesh_offset_a.append(temp1)
             print(f"Read Offset {f.tell()-4}, Texture Offset A: {temp1}")
 
             temp = cursor
             cursor = f.tell()
-            out(p, cursor, temp)
+            all_offset.append(f.tell())
+
             temp1 = struct.unpack('<I', f.read(4))[0]
             print(f"Read Offset {f.tell()-4}, Texture Offset B : {temp1}")
             f.read(132)
@@ -196,20 +203,24 @@ def generate_pof0(f, p):
             for k in range(mesh_size[j]):
                 temp = cursor
                 cursor = f.tell()
-                out(p, cursor, temp)
+                all_offset.append(f.tell())
+
                 temp1 = struct.unpack('<I', f.read(4))[0]
                 print(f"Read Offset {f.tell()-4}, Texture {j}, Mesh {k} Offset: {temp1}")
                 f.read(12)
 
-    pad = 0
-    rem = byte_count % 4
-    if rem != 0:
-        p.write(b'\x00' * (4 - rem))
-        byte_count += 4 - rem
+    #untuk mengurutkan offset setiap data yang sudah dibaca
+    all_offset.sort()
+    print(all_offset)
+    print(len(all_offset))
 
-    p.seek(4, 0)
-    byte_count = struct.pack('>I', byte_count)
-    p.write(byte_count)
+    #menulis POF0 menggunakan offset yang sudah diurutkan
+    for i in range(len(all_offset)-1):
+        cursor = all_offset[i+1]
+        temp = all_offset[i]
+        out(p, cursor, temp)
+
+    print(f"Tulis panjang POF0 secara manual di Offset 4, Little Endian Int32")
 
 def main():
     if len(sys.argv) != 3:
