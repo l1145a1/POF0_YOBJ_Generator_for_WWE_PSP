@@ -53,12 +53,15 @@ def validate_pof0(f, p):
             return 1
     return 0
 
-def generate_pof0(f, p):
+def make_new_file(p):
     byte_count = 0
     word = b'POF0'
     p.write(word)
     p.write(struct.pack('>I', byte_count))
 
+def generate_pof0(f, p):
+    p.seek(0, os.SEEK_END)
+    start_pof0=p.tell()
     f.seek(0)
     word = f.read(4).decode('ascii')
     if word != "YOBJ":
@@ -220,7 +223,13 @@ def generate_pof0(f, p):
         temp = all_offset[i]
         out(p, cursor, temp)
 
-    print(f"Tulis panjang POF0 secara manual di Offset 4, Little Endian Int32")
+    end_pof0=p.tell()
+    p.seek(0)
+    p.read(4)
+    pof0_lenght=end_pof0-start_pof0
+    p.write(struct.pack('<I', pof0_lenght))
+
+
 
 def main():
     if len(sys.argv) != 3:
@@ -239,6 +248,13 @@ def main():
         print(f"Cannot open {sys.argv[2]}")
         return 1
 
+    make_new_file(pof0_file)
+
+    try:
+        pof0_file = open(sys.argv[2], "r+b")
+    except IOError:
+        print(f"Cannot open {sys.argv[2]}")
+        return 1
     generate_pof0(yobj_file, pof0_file)
     pof0_file.close()
 
