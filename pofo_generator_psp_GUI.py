@@ -4,13 +4,6 @@ import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-FILE_HEADER = 8
-vertex_offset =[]
-UV_offset=[]
-texture_offset=[]
-texture_count=[]
-all_offset=[]
-
 # Indonesia
 # POFO adalah jarak antar offset yang diencrpyt dengan format dibawah ini.
 # Pembuatan POF0 disesuaikan dengan offset mana dulu yang muncul (ascending)
@@ -62,6 +55,14 @@ def make_new_file(p):
     p.write(struct.pack('>I', byte_count))
 
 def generate_pof0(f, p):
+    FILE_HEADER = 8
+    vertex_offset =[]
+    UV_offset=[]
+    texture_offset=[]
+    texture_count=[]
+    all_offset=[]
+    temp=0
+    temp1=0
     p.seek(0, os.SEEK_END)
     start_pof0=p.tell()
     f.seek(0)
@@ -253,17 +254,20 @@ def run_conversion():
     except IOError:
         messagebox.showerror("Error", f"Cannot open {infile}")
         return
+
     try:
         pof0_file = open(outfile, "wb")
     except IOError:
         messagebox.showerror("Error", f"Cannot open {outfile}")
         return
     make_new_file(pof0_file)
+    pof0_file.close()
     try:
         pof0_file = open(outfile, "r+b")
     except IOError:
         messagebox.showerror("Error", f"Cannot open {outfile}")
         return
+
     generate_pof0(yobj_file, pof0_file)
     pof0_file.close()
     yobj_file.close()
